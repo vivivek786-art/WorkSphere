@@ -1,0 +1,4 @@
+/backend/target/
+/backend/tracking-data.mv.db
+/backend/*.trace.db
+/backend/*.lock.db

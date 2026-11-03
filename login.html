@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f8fa" />
+    <title>Sign in | WorkSphere</title>
+    <link rel="stylesheet" href="/login.css" />
+  </head>
+  <body>
+    <main class="login-shell">
+      <section class="login-card" aria-labelledby="login-title">
+        <div class="brand-mark" aria-hidden="true">W</div>
+        <p class="eyebrow">WORK MANAGEMENT</p>
+        <h1 id="login-title">Welcome to WorkSphere</h1>
+        <p class="login-description">Sign in with your WorkSphere username and password.</p>
+        <form class="login-form" method="post" action="/login">
+          <label for="username">Username / email</label>
+          <input id="username" name="username" type="email" required autocomplete="username" autofocus />
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" required autocomplete="current-password" />
+          <input id="csrf-token" type="hidden" name="_csrf" value="" />
+          <button class="login-submit" type="submit" disabled>Sign in</button>
+        </form>
+        <p class="login-notice" id="login-notice" role="status" aria-live="polite"></p>
+        <p class="login-footer">Account access is managed by your WorkSphere administrator.</p>
+      </section>
+    </main>
+    <script>
+      if (new URLSearchParams(window.location.search).has("logout")) {
+        document.querySelector("#login-notice").textContent = "You have been signed out.";
+      }
+      if (new URLSearchParams(window.location.search).has("error")) {
+        document.querySelector("#login-notice").textContent = "Sign-in failed. Check your username and password, and confirm your account is enabled.";
+      }
+      const loginForm = document.querySelector(".login-form");
+      loginForm.addEventListener("submit", () => {
+        document.querySelector("#username").value = document.querySelector("#username").value.trim();
+      });
+      fetch("/common/api/v1/auth/csrf", { credentials: "same-origin" })
+        .then((response) => {
+          if (!response.ok) throw new Error("Could not load the sign-in security token.");
+          return response.json();
+        })
+        .then((csrf) => {
+          const token = document.querySelector("#csrf-token");
+          token.name = csrf.parameterName;
+          token.value = csrf.token;
+          document.querySelector(".login-submit").disabled = false;
+        })
+        .catch((error) => {
+          document.querySelector("#login-notice").textContent = error.message;
+          document.querySelector(".login-submit").disabled = true;
+        });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f8fa" />
+    <title>WorkSphere | Project board</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Main navigation">
+        <a class="brand" href="#" aria-label="WorkSphere home">
+          <span class="brand-mark" aria-hidden="true">W</span>
+          <span>WorkSphere</span>
+        </a>
+
+        <details class="workspace-switcher" id="workspace-switcher">
+          <summary class="workspace-switcher-trigger" aria-label="Select workspace">
+            <span class="workspace-avatar">W</span>
+            <span class="workspace-name">
+              <strong id="active-workspace-name">Workspace</strong>
+              <small id="active-workspace-count">Project management</small>
+            </span>
+            <span class="chevron" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="workspace-menu" id="workspace-menu" aria-label="Workspaces"></div>
+        </details>
+
+        <nav class="primary-nav">
+          <a href="#" class="nav-link" data-page="home"><span class="nav-icon">⌂</span> Home</a>
+          <a href="#" class="nav-link" data-page="your-work"><span class="nav-icon">▦</span> Your work</a>
+          <a href="#" class="nav-link" data-page="recent"><span class="nav-icon">◷</span> Recent</a>
+          <a href="#" class="nav-link" data-page="starred"><span class="nav-icon">☆</span> Starred</a>
+          <a href="#" class="nav-link" data-page="admin" id="admin-nav" hidden><span class="nav-icon">⚙</span> User management</a>
+        </nav>
+
+        <div class="sidebar-section">
+          <div class="section-heading">
+            <span>Projects</span>
+            <button class="icon-button subtle add-project-button" type="button" aria-label="Add project" title="Add project">＋</button>
+          </div>
+          <div id="project-list"></div>
+          <button class="text-button add-project-button" type="button">＋ Add project</button>
+        </div>
+
+        <div class="sidebar-bottom">
+          <button type="button" class="nav-link tour-launch" data-tour-start><span class="nav-icon">?</span> Help center</button>
+          <details class="profile-menu">
+            <summary class="profile" aria-label="Open account menu">
+              <span class="avatar avatar-me" id="profile-avatar">?</span>
+              <span class="workspace-name">
+                <strong id="profile-name">No members</strong>
+                <small id="profile-mode">Workspace member</small>
+              </span>
+              <span class="profile-menu-trigger" aria-hidden="true">•••</span>
+            </summary>
+            <div class="profile-menu-popover" role="menu" aria-label="Account options">
+              <div class="profile-menu-heading">
+                <strong id="profile-menu-name">No members</strong>
+                <small id="profile-menu-email"></small>
+              </div>
+              <button type="button" role="menuitem" data-profile-action="your-work">▦ <span>View your work</span></button>
+              <button type="button" role="menuitem" data-profile-action="add-member">＋ <span>Add workspace member</span></button>
+              <button type="button" role="menuitem" data-profile-action="admin" hidden>⚙ <span>User management</span></button>
+              <button type="button" role="menuitem" data-profile-action="sign-out">↪ <span>Sign out</span></button>
+            </div>
+          </details>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumbs">
+            <span class="breadcrumb-project"><span class="project-glyph project-purple" id="breadcrumb-glyph">—</span> <span id="breadcrumb-name">No project selected</span></span>
+            <span class="breadcrumb-divider">/</span>
+            <span id="active-view-label">Board</span>
+          </div>
+          <div class="topbar-actions">
+            <label class="search-box">
+              <span aria-hidden="true">⌕</span>
+              <input id="search-input" type="search" placeholder="Search issues" aria-label="Search issues" />
+              <kbd>/</kbd>
+            </label>
+            <button class="icon-button notification-button" type="button" aria-label="Notifications">♧<span></span></button>
+            <span class="avatar avatar-me top-avatar" id="top-avatar" aria-label="Workspace member">?</span>
+          </div>
+        </header>
+
+        <section class="page-content">
+          <div class="project-heading">
+            <div class="title-group">
+              <div class="project-glyph project-purple title-glyph" id="project-glyph">—</div>
+              <div>
+                <p class="eyebrow">PROJECT</p>
+                <h1 id="project-name">No project selected</h1>
+              </div>
+              <button class="icon-button subtle heading-more" type="button" aria-label="Project options">•••</button>
+            </div>
+            <div class="heading-actions">
+              <div class="member-stack" id="member-stack" aria-label="Workspace members"></div>
+              <button class="button button-secondary" id="add-member" type="button">＋ Member</button>
+              <button class="button button-secondary" id="toggle-project-star" type="button" aria-pressed="false" disabled>☆ Star project</button>
+              <button class="button button-secondary" id="share-project" type="button">Share</button>
+              <button class="button button-primary" id="create-issue" type="button"><span>＋</span> Create issue</button>
+            </div>
+          </div>
+
+          <div class="tabs" aria-label="Project views">
+            <button class="tab active" type="button" data-view="board" aria-pressed="true">▦ <span>Board</span></button>
+            <button class="tab" type="button" data-view="list" aria-pressed="false">☷ <span>List</span></button>
+            <button class="tab" type="button" data-view="backlog" aria-pressed="false">▤ <span>Backlog</span></button>
+            <button class="tab" type="button" data-view="timeline" aria-pressed="false">◷ <span>Timeline</span></button>
+          </div>
+
+          <p id="board-message" class="board-message" role="status" aria-live="polite"></p>
+          <div class="board-toolbar">
+            <div class="board-tools">
+              <div class="filter-wrap">
+                <span class="filter-icon" aria-hidden="true">☷</span>
+                <select id="type-filter" aria-label="Filter by issue type">
+                  <option value="all">All issue types</option>
+                </select>
+              </div>
+              <div class="filter-wrap">
+                <span class="filter-icon" aria-hidden="true">⚑</span>
+                <select id="priority-filter" aria-label="Filter by priority">
+                  <option value="all">All priorities</option>
+                </select>
+              </div>
+              <button class="icon-button filter-button" id="clear-filters" type="button" title="Clear filters" aria-label="Clear filters">↺</button>
+            </div>
+            <div class="board-view-actions">
+              <button class="icon-button board-view-button" id="board-settings-button" type="button" aria-label="Board settings" title="Board settings">⚙</button>
+              <details class="board-options">
+                <summary class="icon-button board-view-button" aria-label="More board options" title="More options">•••</summary>
+                <div class="board-options-menu" role="menu" aria-label="Board actions">
+                  <button type="button" role="menuitem" id="refresh-issues">↻ <span>Refresh issues</span></button>
+                  <div class="menu-divider"></div>
+                  <span class="menu-label">Sort issues</span>
+                  <button type="button" role="menuitem" data-sort="key">↕ <span>Issue key</span><span class="sort-check"></span></button>
+                  <button type="button" role="menuitem" data-sort="priority">↕ <span>Priority</span><span class="sort-check"></span></button>
+                  <button type="button" role="menuitem" data-sort="dueDate">↕ <span>Due date</span><span class="sort-check"></span></button>
+                  <div class="menu-divider"></div>
+                  <button type="button" role="menuitem" id="export-issues">⇩ <span>Export filtered issues (CSV)</span></button>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <section class="board" id="board" aria-label="Project kanban board"></section>
+          <p class="board-hint" id="board-hint">Tip: drag an issue between columns to update its status.</p>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="issue-dialog" class="issue-dialog">
+      <form id="issue-form">
+        <div class="dialog-header">
+          <div>
+            <p class="eyebrow" id="dialog-eyebrow">NEW ISSUE</p>
+            <h2 id="dialog-title">Create an issue</h2>
+          </div>
+          <button class="icon-button subtle dialog-close" type="button" aria-label="Close dialog">×</button>
+        </div>
+        <input id="issue-id" type="hidden" />
+        <label class="field-label" for="issue-summary">Summary <span>*</span></label>
+        <input class="form-control" id="issue-summary" name="summary" required maxlength="120" placeholder="What needs to be done?" />
+        <label class="field-label" for="issue-description">Description</label>
+        <textarea class="form-control description-control" id="issue-description" name="description" rows="3" placeholder="Add more detail..."></textarea>
+        <div class="form-row">
+          <div>
+            <label class="field-label" for="issue-type">Issue type</label>
+            <select class="form-control" id="issue-type" name="type" required></select>
+          </div>
+          <div>
+            <label class="field-label" for="issue-status">Status</label>
+            <select class="form-control" id="issue-status" name="status" required></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="field-label" for="issue-priority">Priority</label>
+            <select class="form-control" id="issue-priority" name="priority" required></select>
+          </div>
+          <div>
+            <label class="field-label" for="issue-assignee">Assignee</label>
+            <select class="form-control" id="issue-assignee" name="assignee"></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label class="field-label" for="issue-start-date">Start date</label>
+            <input class="form-control" id="issue-start-date" name="startDate" type="date" />
+          </div>
+          <div>
+            <label class="field-label" for="issue-due-date">Due date</label>
+            <input class="form-control" id="issue-due-date" name="dueDate" type="date" />
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="button button-danger" id="delete-issue" type="button" hidden>Delete issue</button>
+          <div class="footer-spacer"></div>
+          <button class="button button-secondary dialog-cancel" type="button">Cancel</button>
+          <button class="button button-primary" type="submit" id="save-issue">Create</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="project-dialog" class="issue-dialog">
+      <form id="project-form">
+        <div class="dialog-header">
+          <div><p class="eyebrow">WORKSPACE</p><h2>Create a project</h2></div>
+          <button class="icon-button subtle dialog-close" type="button" aria-label="Close dialog">×</button>
+        </div>
+        <label class="field-label" for="project-name-input">Project name <span>*</span></label>
+        <input class="form-control" id="project-name-input" name="name" required maxlength="80" placeholder="e.g. Website refresh" />
+        <div class="dialog-footer">
+          <div class="footer-spacer"></div>
+          <button class="button button-secondary dialog-cancel" type="button">Cancel</button>
+          <button class="button button-primary" type="submit">Create project</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="member-dialog" class="issue-dialog">
+      <form id="member-form">
+        <div class="dialog-header">
+          <div><p class="eyebrow">WORKSPACE</p><h2>Add a member</h2></div>
+          <button class="icon-button subtle dialog-close" type="button" aria-label="Close dialog">×</button>
+        </div>
+        <label class="field-label" for="member-name-input">Full name <span>*</span></label>
+        <input class="form-control" id="member-name-input" name="name" required maxlength="80" placeholder="Enter a team member's name" />
+        <div class="dialog-footer">
+          <div class="footer-spacer"></div>
+          <button class="button button-secondary dialog-cancel" type="button">Cancel</button>
+          <button class="button button-primary" type="submit">Add member</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="account-dialog" class="issue-dialog">
+      <form id="account-form">
+        <div class="dialog-header">
+          <div><p class="eyebrow">ACCESS CONTROL</p><h2 id="account-dialog-title">Create account</h2></div>
+          <button class="icon-button subtle dialog-close" type="button" aria-label="Close dialog">×</button>
+        </div>
+        <label class="field-label" for="account-full-name">Full name <span>*</span></label>
+        <input class="form-control" id="account-full-name" name="fullName" required maxlength="100" autocomplete="name" />
+        <label class="field-label" for="account-username">Username / email <span>*</span></label>
+        <input class="form-control" id="account-username" name="username" type="email" required maxlength="254" autocomplete="username" />
+        <label class="field-label" for="account-password">Password <span id="account-password-required">*</span></label>
+        <input class="form-control" id="account-password" name="password" type="password" minlength="12" maxlength="72" autocomplete="new-password" />
+        <p class="account-password-hint" id="account-password-hint">Use at least 12 characters. Leave blank when editing to keep the current password.</p>
+        <div id="account-role-field">
+          <label class="field-label" for="account-role">Role <span>*</span></label>
+          <select class="form-control" id="account-role" name="role">
+            <option value="USER">User</option>
+            <option value="ADMIN">Admin</option>
+            <option value="SUPERADMIN">Superadmin</option>
+          </select>
+        </div>
+        <label class="account-enabled-field"><input id="account-enabled" name="enabled" type="checkbox" checked /> Account can sign in</label>
+        <p class="account-form-message" id="account-form-message" role="status" aria-live="polite"></p>
+        <div class="dialog-footer">
+          <div class="footer-spacer"></div>
+          <button class="button button-secondary dialog-cancel" type="button">Cancel</button>
+          <button class="button button-primary" type="submit" id="account-save">Create account</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="share-project-dialog" class="issue-dialog share-project-dialog">
+      <form method="dialog">
+        <div class="dialog-header">
+          <div><p class="eyebrow">PROJECT ACCESS</p><h2>Share project</h2></div>
+          <button class="icon-button subtle dialog-close" type="button" aria-label="Close dialog">×</button>
+        </div>
+        <p class="share-project-description">Copy a direct link to this project. Teammates need access to this app and its API.</p>
+        <label class="field-label" for="share-project-link">Project link</label>
+        <div class="share-link-row">
+          <input class="form-control" id="share-project-link" type="text" readonly />
+          <button class="button button-secondary" id="copy-project-link" type="button">Copy link</button>
+        </div>
+        <p id="share-project-message" class="share-project-message" role="status" aria-live="polite"></p>
+        <div class="dialog-footer">
+          <div class="footer-spacer"></div>
+          <button class="button button-secondary" id="native-share-project" type="button">Share…</button>
+          <button class="button button-primary dialog-cancel" type="button">Done</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="board-settings-dialog" class="issue-dialog board-settings-dialog">
+      <form method="dialog">
+        <div class="dialog-header">
+          <div><p class="eyebrow">BOARD DISPLAY</p><h2>Board settings</h2></div>
+          <button class="icon-button subtle dialog-close" type="button" aria-label="Close dialog">×</button>
+        </div>
+        <label class="setting-row" for="setting-descriptions">
+          <span><strong>Show descriptions</strong><small>Display issue descriptions on board cards.</small></span>
+          <input id="setting-descriptions" type="checkbox" checked />
+        </label>
+        <label class="setting-row" for="setting-due-dates">
+          <span><strong>Show due dates</strong><small>Display due-date indicators on board cards.</small></span>
+          <input id="setting-due-dates" type="checkbox" checked />
+        </label>
+        <label class="setting-row" for="setting-compact-cards">
+          <span><strong>Compact cards</strong><small>Reduce card spacing to show more issues.</small></span>
+          <input id="setting-compact-cards" type="checkbox" />
+        </label>
+        <div class="dialog-footer">
+          <div class="footer-spacer"></div>
+          <button class="button button-primary" type="submit">Done</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="workspace-manager-dialog" class="issue-dialog workspace-manager-dialog" aria-labelledby="workspace-manager-title" aria-describedby="workspace-manager-description">
+      <div class="workspace-manager-shell">
+        <header class="workspace-manager-header">
+          <span class="workspace-manager-mark" aria-hidden="true">W</span>
+          <div class="workspace-manager-heading">
+            <p class="eyebrow">WORKSPACE ACCESS</p>
+            <h2 id="workspace-manager-title">Manage workspaces</h2>
+          </div>
+          <button class="icon-button subtle dialog-close" type="button" aria-label="Close dialog">×</button>
+        </header>
+        <p class="workspace-dialog-description" id="workspace-manager-description">Organize projects by workspace and choose which accounts can access each one. You’ll always remain a member of workspaces you manage.</p>
+        <div class="workspace-manager-toolbar">
+          <div><strong>Your workspaces</strong><span id="workspace-manager-count"></span></div>
+          <button class="button button-primary" type="button" id="create-workspace">＋ New workspace</button>
+        </div>
+        <div id="workspace-manager-list" class="workspace-manager-list" role="list" aria-label="Workspaces"></div>
+        <footer class="workspace-manager-footer">
+          <span>Workspace access is managed per account.</span>
+          <button class="button button-secondary dialog-cancel" type="button">Done</button>
+        </footer>
+      </div>
+    </dialog>
+
+    <dialog id="workspace-dialog" class="issue-dialog workspace-dialog">
+      <form id="workspace-form">
+        <div class="dialog-header">
+          <div><p class="eyebrow">WORKSPACE ACCESS</p><h2 id="workspace-dialog-title">Create workspace</h2></div>
+          <button class="icon-button subtle dialog-close" type="button" aria-label="Close dialog">×</button>
+        </div>
+        <label class="field-label" for="workspace-name-input">Workspace name <span>*</span></label>
+        <input class="form-control" id="workspace-name-input" name="name" required maxlength="80" />
+        <div class="workspace-account-heading">
+          <span class="field-label">Workspace accounts</span>
+          <span id="workspace-selected-count" class="workspace-selected-count"></span>
+        </div>
+        <div id="workspace-account-options" class="workspace-account-options"></div>
+        <p id="workspace-form-message" class="account-form-message" role="status" aria-live="polite"></p>
+        <div class="dialog-footer">
+          <div class="footer-spacer"></div>
+          <button class="button button-secondary dialog-cancel" type="button">Cancel</button>
+          <button class="button button-primary" type="submit" id="workspace-save">Create workspace</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="product-tour" class="product-tour" hidden aria-hidden="true">
+      <div class="tour-scrim"></div>
+      <div class="tour-spotlight"></div>
+      <section class="tour-card" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-description">
+        <div class="tour-card-header">
+          <span class="tour-step-label" id="tour-step-label"></span>
+          <button type="button" class="tour-close" data-tour-close aria-label="Close tour">×</button>
+        </div>
+        <h2 id="tour-title"></h2>
+        <p id="tour-description"></p>
+        <div class="tour-card-footer">
+          <button type="button" class="button button-secondary" id="tour-back">Back</button>
+          <span class="tour-progress" id="tour-progress"></span>
+          <button type="button" class="button button-primary" id="tour-next">Next</button>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
