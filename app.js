@@ -35,6 +35,7 @@ let adminWorkspaces = [];
 let members = [];
 let authenticatedUser = null;
 let issues = [];
+let issueSaveInProgress = false;
 let selectedProjectId = null;
 let selectedWorkspaceId = null;
 let draggedIssueId = null;
@@ -43,6 +44,7 @@ let timelineMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
 let issueSort = "key";
 let boardSettings = loadBoardSettings();
 let celebrationTimeout;
+let toastTimeout;
 let globalPage = null;
 let globalPageRequest = 0;
 let tourStepIndex = 0;
@@ -146,6 +148,16 @@ function showMessage(message, isError = false) {
   element.textContent = message;
   element.classList.toggle("error", isError);
   element.hidden = !message;
+}
+
+function showToast(message) {
+  const toast = document.querySelector("#toast-notice");
+  document.querySelector("#toast-notice-text").textContent = message;
+  toast.hidden = false;
+  window.clearTimeout(toastTimeout);
+  toastTimeout = window.setTimeout(() => {
+    toast.hidden = true;
+  }, 3500);
 }
 
 function updateProductTourStep() {
@@ -311,10 +323,26 @@ function renderMembers() {
   topAvatar.className = authenticatedUser ? "avatar avatar-me top-avatar"
     : currentMember ? `avatar top-avatar ${memberColor(currentMember.id)}` : "avatar avatar-me top-avatar";
   topAvatar.setAttribute("aria-label", currentName);
+  setProfileAvatarImage(profileAvatar, authenticatedUser?.picture, currentInitials);
+  setProfileAvatarImage(topAvatar, authenticatedUser?.picture, currentInitials);
+  document.querySelector('[data-profile-action="profile-photo"]').hidden =
+    !signedIn || !["ADMIN", "SUPERADMIN"].includes(authenticatedUser.role);
 
   const assigneeOptions = ['<option value="">Unassigned</option>']
     .concat(members.map((member) => `<option value="${member.id}">${escapeHtml(member.name)}</option>`));
   assigneeInput.innerHTML = assigneeOptions.join("");
+}
+
+function setProfileAvatarImage(avatar, picture, initials) {
+  if (!picture) return;
+  const image = document.createElement("img");
+  image.src = picture;
+  image.alt = "";
+  image.onerror = () => {
+    image.remove();
+    avatar.textContent = initials;
+  };
+  avatar.replaceChildren(image);
 }
 
 function renderProjects() {
@@ -460,31 +488,33 @@ function iconForPriority(priority) {
 
 function getDueDateState(issue) {
   if (!issue.dueDate) return null;
-  const [year, month, day] = issue.dueDate.split("-").map(Number);
+  const [year, month, day] = issue.dueDate.slice(0, 10).split("-").map(Number);
   const dueDay = Date.UTC(year, month - 1, day) / 86400000;
   const now = new Date();
   const todayDay = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000;
   const daysUntil = dueDay - todayDay;
   const isDone = issue.status.toLowerCase() === "done";
+  const formattedDueDate = formatDateTime(issue.dueDate);
+  const isPastDue = issue.dueDate < getCurrentDateTimeString();
 
-  if (isDone) return { className: "due-date-complete", label: formatDate(issue.dueDate), title: `Due ${formatDate(issue.dueDate)}` };
-  if (daysUntil < 0) {
+  if (isDone) return { className: "due-date-complete", label: formattedDueDate, title: `Due ${formattedDueDate}` };
+  if (isPastDue) {
     const daysOverdue = Math.abs(daysUntil);
     return {
       className: "due-date-overdue",
-      label: `Overdue${daysOverdue > 1 ? ` · ${daysOverdue}d` : ""}`,
-      title: `Due ${formatDate(issue.dueDate)} · ${daysOverdue} ${daysOverdue === 1 ? "day" : "days"} overdue`
+      label: `Overdue${daysOverdue > 1 ? ` · ${daysOverdue}d` : ""} · ${formattedDueDate}`,
+      title: `Due ${formattedDueDate} · ${daysOverdue ? `${daysOverdue} ${daysOverdue === 1 ? "day" : "days"} ` : ""}overdue`
     };
   }
-  if (daysUntil === 0) return { className: "due-date-today", label: "Due today", title: `Due ${formatDate(issue.dueDate)}` };
+  if (daysUntil === 0) return { className: "due-date-today", label: `Due today · ${formatTime(issue.dueDate)}`, title: `Due ${formattedDueDate}` };
   if (daysUntil <= 3) {
     return {
       className: "due-date-soon",
-      label: `Due in ${daysUntil}d`,
-      title: `Due ${formatDate(issue.dueDate)}`
+      label: `Due in ${daysUntil}d · ${formattedDueDate}`,
+      title: `Due ${formattedDueDate}`
     };
   }
-  return { className: "due-date-upcoming", label: formatDate(issue.dueDate), title: `Due ${formatDate(issue.dueDate)}` };
+  return { className: "due-date-upcoming", label: formattedDueDate, title: `Due ${formattedDueDate}` };
 }
 
 function renderDueDate(issue, compact = false) {
@@ -496,7 +526,7 @@ function renderDueDate(issue, compact = false) {
 }
 
 function setStartDateMinimum() {
-  startDateInput.min = getTodayDateString();
+  startDateInput.min = `${getTodayDateString()}T00:00`;
 }
 
 function getTodayDateString() {
@@ -508,13 +538,18 @@ function getTodayDateString() {
   ].join("-");
 }
 
+function getCurrentDateTimeString() {
+  const now = new Date();
+  return `${getTodayDateString()}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
 function renderIssue(issue) {
   const member = members.find((item) => Number(item.id) === Number(issue.assigneeId));
   const assignee = member
     ? `<span class="card-assignee ${memberColor(member.id)}" title="${escapeHtml(member.name)}">${escapeHtml(member.initials)}</span>`
     : '<span class="card-assignee assignee-empty" title="Unassigned">·</span>';
   const description = boardSettings.showDescriptions && issue.description
-    ? `<p class="card-description">${escapeHtml(issue.description)}</p>`
+    ? `<div class="card-description">${renderIssueDescription(issue.description)}</div>`
     : "";
   const dueDate = boardSettings.showDueDates && issue.dueDate
     ? `<div class="card-due-date">${renderDueDate(issue, true)}</div>`
@@ -534,6 +569,17 @@ function renderIssue(issue) {
       ${assignee}
     </div>
   </article>`;
+}
+
+function renderIssueDescription(description) {
+  const lines = description.split(/\r\n?|\n/).filter((line) => line.trim());
+  const numberedLines = lines.map((line) => line.trim().match(/^(\d+)[.)]\s*(.*)$/));
+  if (lines.length && numberedLines.every(Boolean)) {
+    return `<ol class="card-description-list">${numberedLines.map((match) =>
+      `<li value="${Number(match[1])}">${escapeHtml(match[2])}</li>`
+    ).join("")}</ol>`;
+  }
+  return description.split(/\r\n?|\n/).map(escapeHtml).join("<br>");
 }
 
 function getFilteredIssues(source = issues) {
@@ -640,7 +686,7 @@ async function loadIssuesAcrossProjects() {
 function renderHomePage(allIssues) {
   const inProgressCount = allIssues.filter((issue) => issue.status.toLowerCase() === "in progress").length;
   const overdueCount = allIssues.filter((issue) =>
-    issue.dueDate && issue.dueDate < getTodayDateString() && !isDoneStatus(issue.status)
+    issue.dueDate && issue.dueDate < getCurrentDateTimeString() && !isDoneStatus(issue.status)
   ).length;
   board.className = "view-panel home-dashboard";
   board.innerHTML = `<div class="global-page-heading"><p class="eyebrow">WORKSPACE</p><h1>Home</h1><p>Your project activity at a glance.</p></div>
@@ -704,20 +750,21 @@ function renderAccountsPage(accounts) {
   const isSuperadmin = authenticatedUser.role === "SUPERADMIN";
   board.className = "view-panel global-list-view";
   board.innerHTML = `<div class="global-page-heading"><p class="eyebrow">ACCESS CONTROL</p><h1>User management</h1>
-    <p>Create, update, disable, and remove WorkSphere accounts. Admins can manage users; only superadmins can assign admin roles.</p></div>
+    <p>Create, update, disable, and remove WorkSphere accounts. Admins cannot view or modify superadmin accounts.</p></div>
     <div class="global-section-heading account-section-heading"><div><h2>Accounts</h2><p>${accounts.length} ${accounts.length === 1 ? "account" : "accounts"}</p></div>
       <button class="button button-primary" type="button" id="create-account">＋ Create account</button></div>
     <div class="issue-table-wrap account-table-wrap"><table class="issue-table">
       <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Access</th><th>Actions</th></tr></thead>
       <tbody>${accounts.map((account) => {
         const isCurrentAccount = account.username.toLowerCase() === authenticatedUser.email.toLowerCase();
+        const canEditAccount = isSuperadmin || account.role === "USER";
         return `<tr>
           <td>${escapeHtml(account.fullName)}</td>
           <td>${escapeHtml(account.username)}</td>
           <td><span class="account-role-badge role-${escapeHtml(account.role.toLowerCase())}">${escapeHtml(account.role)}</span></td>
           <td><span class="account-state${account.enabled ? " enabled" : ""}">${account.enabled ? "Enabled" : "Disabled"}</span></td>
           <td class="account-actions">
-            <button type="button" class="button button-secondary" data-edit-account="${account.id}">Edit</button>
+            <button type="button" class="button button-secondary" data-edit-account="${account.id}" ${canEditAccount ? "" : 'disabled title="Only a superadmin can modify administrator accounts."'}>Edit</button>
             <button type="button" class="button account-delete-button" data-delete-account="${account.id}" ${isCurrentAccount ? 'disabled title="You cannot remove your current account."' : (!isSuperadmin && account.role !== "USER") ? 'disabled title="You cannot remove this account."' : ""}>Delete</button>
           </td>
         </tr>`;
@@ -950,8 +997,26 @@ function renderBacklogView() {
 
 function formatDate(value, options = { month: "short", day: "numeric" }) {
   if (!value) return "—";
-  const date = new Date(`${value}T00:00:00Z`);
-  return new Intl.DateTimeFormat(undefined, { ...options, timeZone: "UTC" }).format(date);
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return new Intl.DateTimeFormat(undefined, options).format(date);
+}
+
+function formatDateTime(value, dateOptions = { month: "short", day: "numeric" }) {
+  if (!value) return "—";
+  const date = formatDate(value, dateOptions);
+  const time = formatTime(value);
+  return time ? `${date} · ${time}` : date;
+}
+
+function formatTime(value) {
+  if (!value || !value.includes("T")) return "";
+  const time = value.slice(11, 16);
+  const [hours, minutes] = time.split(":").map(Number);
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(new Date(2000, 0, 1, hours, minutes));
 }
 
 function renderTimelineView() {
@@ -970,8 +1035,8 @@ function renderTimelineView() {
       unscheduled.push(issue);
       return;
     }
-    const start = new Date(`${issue.startDate || issue.dueDate}T00:00:00Z`);
-    const end = new Date(`${issue.dueDate || issue.startDate}T00:00:00Z`);
+    const start = new Date(`${(issue.startDate || issue.dueDate).slice(0, 10)}T00:00:00Z`);
+    const end = new Date(`${(issue.dueDate || issue.startDate).slice(0, 10)}T00:00:00Z`);
     if (end < monthStart || start > monthEnd) return;
     const firstDay = start < monthStart ? 1 : start.getUTCDate();
     const lastDay = end > monthEnd ? daysInMonth : end.getUTCDate();
@@ -991,7 +1056,7 @@ function renderTimelineView() {
       </button>
       <div class="timeline-track" style="--days:${daysInMonth}">
         ${Array.from({ length: daysInMonth }, () => '<span class="timeline-cell"></span>').join("")}
-        <button class="timeline-bar priority-border-${slug(issue.priority)}" type="button" data-edit-issue="${issue.id}" style="grid-column:${firstDay} / ${endColumn}" title="${escapeHtml(issue.key)} · ${escapeHtml(issue.summary)} · ${escapeHtml(issue.startDate || issue.dueDate)} – ${escapeHtml(issue.dueDate || issue.startDate)}">
+        <button class="timeline-bar priority-border-${slug(issue.priority)}" type="button" data-edit-issue="${issue.id}" style="grid-column:${firstDay} / ${endColumn}" title="${escapeHtml(issue.key)} · ${escapeHtml(issue.summary)} · ${escapeHtml(formatDateTime(issue.startDate || issue.dueDate))} – ${escapeHtml(formatDateTime(issue.dueDate || issue.startDate))}">
           ${escapeHtml(issue.key)} · ${escapeHtml(issue.summary)}
         </button>
       </div>
@@ -1429,6 +1494,10 @@ document.querySelector(".profile-menu-popover").addEventListener("click", async 
     renderGlobalPage();
     return;
   }
+  if (action.dataset.profileAction === "profile-photo") {
+    document.querySelector("#profile-photo-input").click();
+    return;
+  }
   if (action.dataset.profileAction === "sign-out") {
     try {
       const csrf = await api("/auth/csrf");
@@ -1446,6 +1515,39 @@ document.querySelector(".profile-menu-popover").addEventListener("click", async 
       console.error("Could not sign out:", error);
       showMessage(`Could not sign out: ${error.message}`, true);
     }
+  }
+});
+document.querySelector("#profile-photo-input").addEventListener("change", async (event) => {
+  const input = event.currentTarget;
+  const photo = input.files[0];
+  if (!photo) return;
+  input.value = "";
+  if (!["image/png", "image/jpeg"].includes(photo.type) || photo.size > 2 * 1024 * 1024) {
+    showMessage("Choose a PNG or JPEG image up to 2 MB.", true);
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("photo", photo);
+  try {
+    const csrf = await api("/auth/csrf");
+    const response = await fetch(`${API_BASE_URL}/auth/me/photo`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-XSRF-TOKEN": csrf.token },
+      body: formData
+    });
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || `Upload failed (${response.status}).`);
+    }
+    authenticatedUser.picture = `${API_BASE_URL}/auth/me/photo?updated=${Date.now()}`;
+    renderMembers();
+    showMessage("");
+    showToast("Profile photo updated.");
+  } catch (error) {
+    console.error("Could not update profile photo:", error);
+    showMessage(`Could not update profile photo: ${error.message}`, true);
   }
 });
 document.querySelectorAll(".dialog-close, .dialog-cancel").forEach((button) => {
@@ -1529,6 +1631,7 @@ document.querySelector("#member-form").addEventListener("submit", async (event) 
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (issueSaveInProgress) return;
   const id = issueIdInput.value;
   const previousIssue = issues.find((item) => Number(item.id) === Number(id));
   const assigneeId = assigneeInput.value ? Number(assigneeInput.value) : null;
@@ -1551,6 +1654,9 @@ form.addEventListener("submit", async (event) => {
     dueDateInput.focus();
     return;
   }
+  issueSaveInProgress = true;
+  const saveButton = document.querySelector("#save-issue");
+  saveButton.disabled = true;
   try {
     const path = `/projects/${selectedProjectId}/issues${id ? `/${id}` : ""}`;
     await api(path, { method: id ? "PUT" : "POST", body: JSON.stringify(issue) });
@@ -1560,6 +1666,9 @@ form.addEventListener("submit", async (event) => {
     if (isDoneStatus(issue.status) && !isDoneStatus(previousIssue?.status)) celebrateCompletion();
   } catch (error) {
     showMessage(`Could not save issue: ${error.message}`, true);
+  } finally {
+    issueSaveInProgress = false;
+    saveButton.disabled = false;
   }
 });
 

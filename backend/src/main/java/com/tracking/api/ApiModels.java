@@ -10,7 +10,7 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.Size;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,10 +61,10 @@ public final class ApiModels {
         @NotBlank
         public String priority;
         public Long assigneeId;
-        public LocalDate startDate;
-        public LocalDate dueDate;
+        public LocalDateTime startDate;
+        public LocalDateTime dueDate;
 
-        @AssertTrue(message = "Start date must be on or before due date.")
+        @AssertTrue(message = "Start date and time must be on or before due date and time.")
         public boolean isDateRangeValid() {
             return startDate == null || dueDate == null || !startDate.isAfter(dueDate);
         }
@@ -124,9 +124,15 @@ public final class ApiModels {
         public final List<Long> accountIds;
 
         public AdminWorkspaceResponse(WorkspaceEntity workspace) {
+            this(workspace, true);
+        }
+
+        public AdminWorkspaceResponse(WorkspaceEntity workspace, boolean includeSuperadmins) {
             super(workspace);
             this.accountIds = new ArrayList<>();
-            workspace.getAccounts().forEach(account -> accountIds.add(account.getId()));
+            workspace.getAccounts().stream()
+                    .filter(account -> includeSuperadmins || !"SUPERADMIN".equals(account.getRole()))
+                    .forEach(account -> accountIds.add(account.getId()));
         }
     }
 
@@ -139,8 +145,8 @@ public final class ApiModels {
         public final String status;
         public final String priority;
         public final Long assigneeId;
-        public final LocalDate startDate;
-        public final LocalDate dueDate;
+        public final LocalDateTime startDate;
+        public final LocalDateTime dueDate;
 
         public IssueResponse(IssueEntity issue) {
             this.id = issue.getId();

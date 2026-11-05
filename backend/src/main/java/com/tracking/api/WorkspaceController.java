@@ -46,9 +46,9 @@ public class WorkspaceController {
 
     @GetMapping("/admin/workspaces")
     @Transactional(readOnly = true)
-    public List<ApiModels.AdminWorkspaceResponse> getAllWorkspaces() {
+    public List<ApiModels.AdminWorkspaceResponse> getAllWorkspaces(Authentication authentication) {
         return workspaces.findAllByOrderByNameAsc().stream()
-                .map(ApiModels.AdminWorkspaceResponse::new)
+                .map(workspace -> workspaceResponse(workspace, authentication))
                 .collect(Collectors.toList());
     }
 
@@ -62,7 +62,7 @@ public class WorkspaceController {
         }
         WorkspaceEntity workspace = new WorkspaceEntity(name);
         workspace.replaceAccounts(resolveAccounts(request.accountIds, authentication));
-        return new ApiModels.AdminWorkspaceResponse(workspaces.save(workspace));
+        return workspaceResponse(workspaces.save(workspace), authentication);
     }
 
     @PutMapping("/admin/workspaces/{workspaceId}/accounts")
@@ -79,8 +79,14 @@ public class WorkspaceController {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "A workspace with that name already exists.");
             }
         });
-        workspace.replaceAccounts(resolveAccounts(request.accountIds, authentication));
-        return new ApiModels.AdminWorkspaceResponse(workspaces.save(workspace));
+        Set<AccountEntity> resolvedAccounts = resolveAccounts(request.accountIds, authentication);
+        if (!isSuperadmin(authentication)) {
+            workspace.getAccounts().stream()
+                    .filter(account -> "SUPERADMIN".equals(account.getRole()))
+                    .forEach(resolvedAccounts::add);
+        }
+        workspace.replaceAccounts(resolvedAccounts);
+        return workspaceResponse(workspaces.save(workspace), authentication);
     }
 
     private Set<AccountEntity> resolveAccounts(List<Long> accountIds, Authentication authentication) {
@@ -93,6 +99,21 @@ public class WorkspaceController {
         if (selectedAccounts.size() != requestedIds.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more selected accounts were not found.");
         }
+        if (!isSuperadmin(authentication) && selectedAccounts.stream()
+                .anyMatch(account -> "SUPERADMIN".equals(account.getRole()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Only a superadmin can manage superadmin workspace access.");
+        }
         return new LinkedHashSet<>(selectedAccounts);
+    }
+
+    private ApiModels.AdminWorkspaceResponse workspaceResponse(WorkspaceEntity workspace,
+                                                                Authentication authentication) {
+        return new ApiModels.AdminWorkspaceResponse(workspace, isSuperadmin(authentication));
+    }
+
+    private boolean isSuperadmin(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_SUPERADMIN".equals(authority.getAuthority()));
     }
 }

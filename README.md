@@ -12,7 +12,7 @@ Create the configured database before starting the API:
 CREATE DATABASE `tracking_data`;
 ```
 
-Set the datasource password in `backend\src\main\resources\application.properties`, or configure it externally as `SPRING_DATASOURCE_PASSWORD`.
+Set `SPRING_DATASOURCE_PASSWORD` in the environment where the API starts.
 
 ## Sign-in and first superadmin
 
@@ -46,6 +46,8 @@ mvn -f backend\pom.xml spring-boot:run
 The reset targets the configured bootstrap username, restores it to enabled superadmin, and replaces its password. Use the reset flag only for this one startup.
 
 Sign in at `http://localhost:8083/`. The superadmin can open **User management** to create, edit, disable, delete, and assign roles to accounts. Admins can manage regular user accounts; only superadmins can assign administrator roles. Passwords must be at least 12 characters. At least one enabled superadmin must remain, and an account cannot disable or delete itself.
+
+Admins and superadmins can choose **Change profile photo** from their profile menu. PNG and JPEG images up to 2 MB and 2048 by 2048 pixels are supported.
 
 The application is served at `http://localhost:8083/`; the API listens at `http://localhost:8083/common/api/v1`. Use HTTPS and secure deployment settings before exposing the app outside a trusted development environment.
 

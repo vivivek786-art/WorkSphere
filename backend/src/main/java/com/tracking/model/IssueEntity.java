@@ -9,7 +9,7 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "issues")
@@ -39,11 +39,11 @@ public class IssueEntity {
     @Column(nullable = false, length = 30)
     private String priority;
 
-    @Column(name = "start_date")
-    private LocalDate startDate;
+    @Column(name = "start_date", columnDefinition = "DATETIME")
+    private LocalDateTime startDate;
 
-    @Column(name = "due_date")
-    private LocalDate dueDate;
+    @Column(name = "due_date", columnDefinition = "DATETIME")
+    private LocalDateTime dueDate;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "project_id", nullable = false)
@@ -58,7 +58,7 @@ public class IssueEntity {
 
     public IssueEntity(String issueKey, Long issueNumber, String summary, String description,
                        String type, String status, String priority, ProjectEntity project,
-                       MemberEntity assignee, LocalDate startDate, LocalDate dueDate) {
+                       MemberEntity assignee, LocalDateTime startDate, LocalDateTime dueDate) {
         this.issueKey = issueKey;
         this.issueNumber = issueNumber;
         this.summary = summary;
@@ -112,16 +112,16 @@ public class IssueEntity {
         return assignee;
     }
 
-    public LocalDate getStartDate() {
+    public LocalDateTime getStartDate() {
         return startDate;
     }
 
-    public LocalDate getDueDate() {
+    public LocalDateTime getDueDate() {
         return dueDate;
     }
 
     public void update(String summary, String description, String type, String status,
-                       String priority, MemberEntity assignee, LocalDate startDate, LocalDate dueDate) {
+                       String priority, MemberEntity assignee, LocalDateTime startDate, LocalDateTime dueDate) {
         this.summary = summary;
         this.description = description;
         this.type = type;

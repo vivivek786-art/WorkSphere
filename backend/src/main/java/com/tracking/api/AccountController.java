@@ -3,6 +3,7 @@ package com.tracking.api;
 import com.tracking.config.WorkspaceAccessService;
 import com.tracking.model.AccountEntity;
 import com.tracking.model.WorkspaceEntity;
+import com.tracking.repository.AccountProfilePhotoRepository;
 import com.tracking.repository.AccountRepository;
 import com.tracking.repository.WorkspaceRepository;
 import org.springframework.http.HttpStatus;
@@ -35,21 +36,25 @@ public class AccountController {
     private static final List<String> ROLES = java.util.Arrays.asList("USER", "ADMIN", "SUPERADMIN");
 
     private final AccountRepository accounts;
+    private final AccountProfilePhotoRepository profilePhotos;
     private final WorkspaceRepository workspaces;
     private final PasswordEncoder passwordEncoder;
     private final WorkspaceAccessService workspaceAccess;
 
-    public AccountController(AccountRepository accounts, WorkspaceRepository workspaces,
+    public AccountController(AccountRepository accounts, AccountProfilePhotoRepository profilePhotos,
+                             WorkspaceRepository workspaces,
                              PasswordEncoder passwordEncoder, WorkspaceAccessService workspaceAccess) {
         this.accounts = accounts;
+        this.profilePhotos = profilePhotos;
         this.workspaces = workspaces;
         this.passwordEncoder = passwordEncoder;
         this.workspaceAccess = workspaceAccess;
     }
 
     @GetMapping
-    public List<ApiModels.AccountResponse> getAccounts() {
+    public List<ApiModels.AccountResponse> getAccounts(Authentication authentication) {
         return accounts.findAllByOrderByFullNameAsc().stream()
+                .filter(account -> isSuperadmin(authentication) || !"SUPERADMIN".equals(account.getRole()))
                 .map(ApiModels.AccountResponse::new)
                 .collect(Collectors.toList());
     }
@@ -80,6 +85,7 @@ public class AccountController {
                                                    @Valid @RequestBody ApiModels.AccountRequest request,
                                                    Authentication authentication) {
         AccountEntity account = requireAccount(id);
+        requireManagedRole(account, authentication);
         String role = validateRole(request.role, authentication);
         String username = normalizeUsername(request.username);
         validateSelfUpdate(account, username, role, request.enabled, authentication);
@@ -109,6 +115,7 @@ public class AccountController {
                 workspaces.save(workspace);
             }
         }
+        profilePhotos.deleteById(id);
         accounts.delete(account);
         return ResponseEntity.noContent().build();
     }

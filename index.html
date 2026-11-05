@@ -9,6 +9,10 @@
     <script src="app.js" defer></script>
   </head>
   <body>
+    <div id="toast-notice" class="toast-notice" role="status" aria-live="polite" hidden>
+      <span class="toast-notice-icon" aria-hidden="true">✓</span>
+      <span id="toast-notice-text"></span>
+    </div>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Main navigation">
         <a class="brand" href="#" aria-label="WorkSphere home">
@@ -64,8 +68,10 @@
               <button type="button" role="menuitem" data-profile-action="your-work">▦ <span>View your work</span></button>
               <button type="button" role="menuitem" data-profile-action="add-member">＋ <span>Add workspace member</span></button>
               <button type="button" role="menuitem" data-profile-action="admin" hidden>⚙ <span>User management</span></button>
+              <button type="button" role="menuitem" data-profile-action="profile-photo" hidden>▧ <span>Change profile photo</span></button>
               <button type="button" role="menuitem" data-profile-action="sign-out">↪ <span>Sign out</span></button>
             </div>
+            <input id="profile-photo-input" type="file" accept="image/png,image/jpeg" hidden />
           </details>
         </div>
       </aside>
@@ -192,11 +198,11 @@
         <div class="form-row">
           <div>
             <label class="field-label" for="issue-start-date">Start date</label>
-            <input class="form-control" id="issue-start-date" name="startDate" type="date" />
+            <input class="form-control" id="issue-start-date" name="startDate" type="datetime-local" />
           </div>
           <div>
             <label class="field-label" for="issue-due-date">Due date</label>
-            <input class="form-control" id="issue-due-date" name="dueDate" type="date" />
+            <input class="form-control" id="issue-due-date" name="dueDate" type="datetime-local" />
           </div>
         </div>
         <div class="dialog-footer">

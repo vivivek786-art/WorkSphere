@@ -184,7 +184,12 @@ public class TrackingController {
     }
 
     private String normalizeDescription(String description) {
-        return description == null ? "" : description.trim();
+        if (description == null) return "";
+        String normalized = description.replace("\r\n", "\n").replace('\r', '\n');
+        return Arrays.stream(normalized.split("\n", -1))
+                .map(line -> line.replaceAll("[\\t ]+", " ").trim())
+                .collect(Collectors.joining("\n"))
+                .trim();
     }
 
     private String createProjectKey(String name) {
