@@ -248,7 +248,7 @@ function isDoneStatus(status) {
   return String(status || "").toLowerCase() === "done";
 }
 
-function celebrateCompletion() {
+function celebrateCompletion(type) {
   document.querySelector(".completion-celebration")?.remove();
   window.clearTimeout(celebrationTimeout);
 
@@ -259,7 +259,7 @@ function celebrateCompletion() {
 
   const banner = document.createElement("div");
   banner.className = "completion-banner";
-  banner.textContent = "🎉 Issue complete! Great work!";
+  banner.textContent = `🎉 ${type} complete! Great work!`;
   celebration.appendChild(banner);
 
   const colors = ["#6654d9", "#f0a33a", "#35a889", "#e36c83", "#5193cf"];
@@ -1663,7 +1663,7 @@ form.addEventListener("submit", async (event) => {
     await loadIssues();
     dialog.close();
     showMessage("");
-    if (isDoneStatus(issue.status) && !isDoneStatus(previousIssue?.status)) celebrateCompletion();
+    if (isDoneStatus(issue.status) && !isDoneStatus(previousIssue?.status)) celebrateCompletion(issue.type);
   } catch (error) {
     showMessage(`Could not save issue: ${error.message}`, true);
   } finally {
@@ -1835,7 +1835,7 @@ board.addEventListener("drop", async (event) => {
       });
       await loadIssues();
       showMessage("");
-      if (isDoneStatus(status) && !wasDone) celebrateCompletion();
+      if (isDoneStatus(status) && !wasDone) celebrateCompletion(issue.type);
     } catch (error) {
       showMessage(`Could not move issue: ${error.message}`, true);
     }
