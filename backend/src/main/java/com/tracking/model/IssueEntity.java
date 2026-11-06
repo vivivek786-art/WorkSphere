@@ -1,6 +1,7 @@
 package com.tracking.model;
 
 import javax.persistence.Column;
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
@@ -8,8 +9,14 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.ManyToMany;
+import javax.persistence.JoinTable;
+import javax.persistence.OrderBy;
 import javax.persistence.Table;
+import javax.persistence.OneToMany;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "issues")
@@ -52,6 +59,16 @@ public class IssueEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignee_id")
     private MemberEntity assignee;
+
+    @ManyToMany
+    @JoinTable(name = "issue_assignees",
+            joinColumns = @JoinColumn(name = "issue_id"),
+            inverseJoinColumns = @JoinColumn(name = "member_id"))
+    @OrderBy("name ASC")
+    private List<MemberEntity> assignees = new ArrayList<>();
+
+    @OneToMany(mappedBy = "issue", cascade = CascadeType.REMOVE)
+    private List<IssueCommentEntity> comments = new ArrayList<>();
 
     protected IssueEntity() {
     }
@@ -112,6 +129,10 @@ public class IssueEntity {
         return assignee;
     }
 
+    public List<MemberEntity> getAssignees() {
+        return assignees;
+    }
+
     public LocalDateTime getStartDate() {
         return startDate;
     }
@@ -130,5 +151,26 @@ public class IssueEntity {
         this.assignee = assignee;
         this.startDate = startDate;
         this.dueDate = dueDate;
+    }
+
+    public void update(String summary, String description, String type, String status,
+                       String priority, List<MemberEntity> assignees,
+                       LocalDateTime startDate, LocalDateTime dueDate) {
+        this.summary = summary;
+        this.description = description;
+        this.type = type;
+        this.status = status;
+        this.priority = priority;
+        this.assignees.clear();
+        this.assignees.addAll(assignees);
+        this.assignee = assignees.isEmpty() ? null : assignees.get(0);
+        this.startDate = startDate;
+        this.dueDate = dueDate;
+    }
+
+    public void setAssignees(List<MemberEntity> assignees) {
+        this.assignees.clear();
+        this.assignees.addAll(assignees);
+        this.assignee = assignees.isEmpty() ? null : assignees.get(0);
     }
 }

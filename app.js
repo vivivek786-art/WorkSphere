@@ -7,6 +7,9 @@ const TOUR_COMPLETED_KEY = "worksphere-tour-completed";
 
 const form = document.querySelector("#issue-form");
 const dialog = document.querySelector("#issue-dialog");
+const issueCommentsSection = document.querySelector("#issue-comments");
+const issueCommentsList = document.querySelector("#issue-comments-list");
+const issueCommentsMessage = document.querySelector("#issue-comments-message");
 const issueIdInput = document.querySelector("#issue-id");
 const summaryInput = document.querySelector("#issue-summary");
 const descriptionInput = document.querySelector("#issue-description");
@@ -20,6 +23,7 @@ const deleteButton = document.querySelector("#delete-issue");
 const searchInput = document.querySelector("#search-input");
 const typeFilter = document.querySelector("#type-filter");
 const priorityFilter = document.querySelector("#priority-filter");
+const assigneeFilter = document.querySelector("#assignee-filter");
 const board = document.querySelector("#board");
 const projectDialog = document.querySelector("#project-dialog");
 const memberDialog = document.querySelector("#member-dialog");
@@ -68,7 +72,7 @@ const productTourSteps = [
   {
     selector: ".board-toolbar",
     title: "Find and organize issues",
-    description: "Filter by type or priority, adjust board display settings, refresh, sort, or export issues."
+    description: "Filter by type, priority, or assignee, adjust board display settings, refresh, sort, or export issues."
   },
   {
     selector: "#board",
@@ -288,6 +292,14 @@ function renderMember(member) {
 }
 
 function renderMembers() {
+  const selectedAssignee = assigneeFilter.value;
+  assigneeFilter.innerHTML = '<option value="all">All assignees</option>'
+    + '<option value="unassigned">Unassigned</option>'
+    + members.map((member) => `<option value="${escapeHtml(String(member.id))}">${escapeHtml(member.name)}</option>`).join("");
+  if ([...assigneeFilter.options].some((option) => option.value === selectedAssignee)) {
+    assigneeFilter.value = selectedAssignee;
+  }
+
   const stack = document.querySelector("#member-stack");
   stack.innerHTML = members.slice(0, 5).map(renderMember).join("");
   if (members.length > 5) {
@@ -328,8 +340,8 @@ function renderMembers() {
   document.querySelector('[data-profile-action="profile-photo"]').hidden =
     !signedIn || !["ADMIN", "SUPERADMIN"].includes(authenticatedUser.role);
 
-  const assigneeOptions = ['<option value="">Unassigned</option>']
-    .concat(members.map((member) => `<option value="${member.id}">${escapeHtml(member.name)}</option>`));
+  const assigneeOptions = members.map((member) =>
+    `<option value="${escapeHtml(String(member.id))}">${escapeHtml(member.name)}</option>`);
   assigneeInput.innerHTML = assigneeOptions.join("");
 }
 
@@ -544,9 +556,14 @@ function getCurrentDateTimeString() {
 }
 
 function renderIssue(issue) {
-  const member = members.find((item) => Number(item.id) === Number(issue.assigneeId));
-  const assignee = member
-    ? `<span class="card-assignee ${memberColor(member.id)}" title="${escapeHtml(member.name)}">${escapeHtml(member.initials)}</span>`
+  const assignees = getIssueAssigneeIds(issue)
+    .map((id) => members.find((item) => Number(item.id) === Number(id)))
+    .filter(Boolean);
+  const assignee = assignees.length
+    ? `<span class="card-assignees" title="${escapeHtml(assignees.map((member) => member.name).join(", "))}">
+        ${assignees.slice(0, 3).map((member) => `<span class="card-assignee ${memberColor(member.id)}">${escapeHtml(member.initials)}</span>`).join("")}
+        ${assignees.length > 3 ? `<span class="card-assignee-count">+${assignees.length - 3}</span>` : ""}
+      </span>`
     : '<span class="card-assignee assignee-empty" title="Unassigned">·</span>';
   const description = boardSettings.showDescriptions && issue.description
     ? `<div class="card-description">${renderIssueDescription(issue.description)}</div>`
@@ -586,10 +603,15 @@ function getFilteredIssues(source = issues) {
   const query = searchInput.value.trim().toLowerCase();
   const selectedType = typeFilter.value;
   const selectedPriority = priorityFilter.value;
+  const selectedAssignee = assigneeFilter.value;
   const filtered = source.filter((issue) => {
     const searchable = `${issue.key} ${issue.summary} ${issue.description || ""}`.toLowerCase();
     return (selectedType === "all" || issue.type === selectedType)
       && (selectedPriority === "all" || issue.priority === selectedPriority)
+      && (selectedAssignee === "all"
+        || (selectedAssignee === "unassigned"
+          ? getIssueAssigneeIds(issue).length === 0
+          : getIssueAssigneeIds(issue).some((id) => String(id) === selectedAssignee)))
       && (!query || searchable.includes(query));
   });
   return filtered.sort((left, right) => compareIssues(left, right, issueSort));
@@ -635,9 +657,16 @@ function renderBoardView() {
   }
 }
 
+function getIssueAssigneeIds(issue) {
+  if (Array.isArray(issue.assigneeIds) && issue.assigneeIds.length) return issue.assigneeIds;
+  return issue.assigneeId == null ? [] : [issue.assigneeId];
+}
+
 function assigneeName(issue) {
-  const member = members.find((item) => Number(item.id) === Number(issue.assigneeId));
-  return member ? member.name : "Unassigned";
+  const assignees = getIssueAssigneeIds(issue)
+    .map((id) => members.find((item) => Number(item.id) === Number(id)))
+    .filter(Boolean);
+  return assignees.length ? assignees.map((member) => member.name).join(", ") : "Unassigned";
 }
 
 function renderIssueTable(rows, options = {}) {
@@ -662,6 +691,72 @@ function renderIssueTable(rows, options = {}) {
     </tr>`).join("")}</tbody>
   </table></div>`;
 }
+
+function renderIssueComments(comments) {
+  const threads = [
+    ["DEVELOPER", "Developer comments"],
+    ["TESTER", "Tester comments"]
+  ];
+  issueCommentsList.innerHTML = threads.map(([thread, title]) => {
+    const threadComments = comments.filter((comment) => comment.thread === thread);
+    return `<section class="issue-comment-thread"><h4>${title}</h4>
+      ${threadComments.map((comment) => `<article class="issue-comment-item">
+        <div class="issue-comment-meta"><strong>${escapeHtml(comment.authorName)}</strong><time>${escapeHtml(formatDateTime(comment.createdAt, { month: "short", day: "numeric", year: "numeric" }))}</time></div>
+        <p class="issue-comment-body">${escapeHtml(comment.body)}</p>
+      </article>`).join("") || '<p class="issue-comment-meta">No comments yet.</p>'}
+    </section>`;
+  }).join("");
+}
+
+async function loadIssueComments(issueId) {
+  issueCommentsMessage.textContent = "Loading comments...";
+  issueCommentsMessage.classList.remove("error");
+  try {
+    const comments = await api(`/projects/${selectedProjectId}/issues/${issueId}/comments`);
+    if (!dialog.open || issueIdInput.value !== String(issueId)) return;
+    renderIssueComments(comments);
+    issueCommentsMessage.textContent = "";
+  } catch (error) {
+    if (!dialog.open || issueIdInput.value !== String(issueId)) return;
+    issueCommentsMessage.textContent = `Could not load comments: ${error.message}`;
+    issueCommentsMessage.classList.add("error");
+  }
+}
+
+async function postIssueComment(button) {
+  const issueId = issueIdInput.value;
+  const thread = button.dataset.commentThread;
+  const input = document.querySelector(`#${thread.toLowerCase()}-comment-input`);
+  const body = input.value.trim();
+  if (!body) {
+    input.focus();
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Posting...";
+  issueCommentsMessage.textContent = "";
+  issueCommentsMessage.classList.remove("error");
+  try {
+    await api(`/projects/${selectedProjectId}/issues/${issueId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ thread, body })
+    });
+    if (issueIdInput.value !== issueId) return;
+    input.value = "";
+    await loadIssueComments(issueId);
+  } catch (error) {
+    issueCommentsMessage.textContent = `Could not add comment: ${error.message}`;
+    issueCommentsMessage.classList.add("error");
+  } finally {
+    button.disabled = false;
+    button.textContent = `Add ${thread.toLowerCase()} comment`;
+  }
+}
+
+issueCommentsSection.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-comment-thread]");
+  if (button && !button.disabled) postIssueComment(button);
+});
 
 function renderListView() {
   board.className = "view-panel list-view";
@@ -714,14 +809,26 @@ function renderHomePage(allIssues) {
 }
 
 function renderYourWorkPage(allIssues) {
-  const currentMember = members[0];
+  const normalizeName = (name) => name.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+  const currentMember = authenticatedUser?.authenticated === "true"
+    ? members.find((member) => normalizeName(member.name) === normalizeName(authenticatedUser.name))
+    : members[0];
   const assignedIssues = currentMember
-    ? allIssues.filter((issue) => Number(issue.assigneeId) === Number(currentMember.id))
+    ? allIssues.filter((issue) => getIssueAssigneeIds(issue).some((id) => Number(id) === Number(currentMember.id)))
     : [];
+  const emptyMessage = currentMember
+    ? "No issues are assigned to you yet."
+    : authenticatedUser?.authenticated === "true"
+      ? `No workspace member matches your account name (${authenticatedUser.name}). Add a member with the same name to see your assigned issues.`
+      : "No workspace member is available.";
   board.className = "view-panel global-list-view";
   board.innerHTML = `<div class="global-page-heading"><p class="eyebrow">WORKSPACE</p><h1>Your work</h1>
-    <p>${currentMember ? `Issues assigned to ${escapeHtml(currentMember.name)} across all projects.` : "Add a workspace member to see assigned issues."}</p></div>
-    ${renderIssueTable(assignedIssues, { showProject: true, emptyMessage: currentMember ? "No issues are assigned to you yet." : "No workspace member is available." })}`;
+    <p>${currentMember
+      ? `Issues assigned to ${escapeHtml(currentMember.name)} across all projects.`
+      : authenticatedUser?.authenticated === "true"
+        ? `No workspace member matches ${escapeHtml(authenticatedUser.name)}.`
+        : "Add a workspace member to see assigned issues."}</p></div>
+    ${renderIssueTable(assignedIssues, { showProject: true, emptyMessage })}`;
 }
 
 function renderRecentPage() {
@@ -1206,6 +1313,7 @@ function openCreateDialog(status = metadata.statuses[0]) {
   setStartDateMinimum();
   form.reset();
   issueIdInput.value = "";
+  issueCommentsSection.hidden = true;
   if (metadata.types.length) typeInput.value = metadata.types[0];
   if (metadata.priorities.length) priorityInput.value = metadata.priorities[0];
   if (metadata.statuses.includes(status)) statusInput.value = status;
@@ -1228,14 +1336,20 @@ function openEditDialog(id) {
   typeInput.value = issue.type;
   statusInput.value = issue.status;
   priorityInput.value = issue.priority;
-  assigneeInput.value = issue.assigneeId == null ? "" : String(issue.assigneeId);
+  const assignedIds = new Set(getIssueAssigneeIds(issue).map(String));
+  Array.from(assigneeInput.options).forEach((option) => {
+    option.selected = assignedIds.has(option.value);
+  });
   startDateInput.value = issue.startDate || "";
   dueDateInput.value = issue.dueDate || "";
+  issueCommentsSection.hidden = false;
+  issueCommentsList.innerHTML = "";
   document.querySelector("#dialog-eyebrow").textContent = issue.key;
   document.querySelector("#dialog-title").textContent = "Edit issue";
   document.querySelector("#save-issue").textContent = "Save changes";
   deleteButton.hidden = false;
   dialog.showModal();
+  loadIssueComments(issue.id);
   summaryInput.focus();
 }
 
@@ -1634,14 +1748,14 @@ form.addEventListener("submit", async (event) => {
   if (issueSaveInProgress) return;
   const id = issueIdInput.value;
   const previousIssue = issues.find((item) => Number(item.id) === Number(id));
-  const assigneeId = assigneeInput.value ? Number(assigneeInput.value) : null;
+  const assigneeIds = Array.from(assigneeInput.selectedOptions, (option) => Number(option.value));
   const issue = {
     summary: summaryInput.value.trim(),
     description: descriptionInput.value.trim(),
     type: typeInput.value,
     status: statusInput.value,
     priority: priorityInput.value,
-    assigneeId,
+    assigneeIds,
     startDate: startDateInput.value || null,
     dueDate: dueDateInput.value || null
   };
@@ -1689,10 +1803,12 @@ deleteButton.addEventListener("click", async () => {
 searchInput.addEventListener("input", renderView);
 typeFilter.addEventListener("change", renderView);
 priorityFilter.addEventListener("change", renderView);
+assigneeFilter.addEventListener("change", renderView);
 document.querySelector("#clear-filters").addEventListener("click", () => {
   searchInput.value = "";
   typeFilter.value = "all";
   priorityFilter.value = "all";
+  assigneeFilter.value = "all";
   renderView();
 });
 
@@ -1828,7 +1944,7 @@ board.addEventListener("drop", async (event) => {
           type: issue.type,
           status,
           priority: issue.priority,
-          assigneeId: issue.assigneeId,
+          assigneeIds: getIssueAssigneeIds(issue),
           startDate: issue.startDate || null,
           dueDate: issue.dueDate || null
         })

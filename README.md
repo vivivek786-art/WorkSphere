@@ -73,5 +73,6 @@ Project, member, and issue endpoints, plus account creation, require the `X-Work
 - `GET /projects/{projectId}/issues` — list project issues
 - `POST /projects/{projectId}/issues` — create an issue
 - `PUT, DELETE /projects/{projectId}/issues/{issueId}` — update or delete an issue
+- `GET, POST /projects/{projectId}/issues/{issueId}/comments` — list issue comments or add a developer/tester comment
 
-Issue writes use JSON properties `summary`, `description`, `type`, `status`, `priority`, nullable `assigneeId`, and optional ISO `startDate` / `dueDate` values (`yyyy-MM-dd`). In a new database, projects and members start empty; create them from the board UI.
+Issue writes use JSON properties `summary`, `description`, `type`, `status`, `priority`, optional `assigneeIds` (an array of workspace member IDs; use an empty array for unassigned), and optional ISO `startDate` / `dueDate` values (`yyyy-MM-dd`). The legacy `assigneeId` property is still accepted. Issue comment writes use `thread` (`DEVELOPER` or `TESTER`) and `body`; the signed-in user's name and comment timestamp are recorded automatically. Comments can be added whether or not an issue has assignees. In a new database, projects and members start empty; create them from the board UI.

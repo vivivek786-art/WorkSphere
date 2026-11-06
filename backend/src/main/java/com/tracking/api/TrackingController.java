@@ -27,6 +27,8 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.validation.Valid;
 import java.text.Normalizer;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -125,10 +127,10 @@ public class TrackingController {
         ProjectEntity project = requireProject(projectId, workspace.getId());
         validateIssueValues(request);
         Long issueNumber = issues.nextIssueNumber(projectId);
-        MemberEntity assignee = findAssignee(request.assigneeId, workspace.getId());
         IssueEntity issue = new IssueEntity(project.getProjectKey() + "-" + issueNumber, issueNumber,
                 request.summary.trim(), normalizeDescription(request.description), request.type,
-                request.status, request.priority, project, assignee, request.startDate, request.dueDate);
+                request.status, request.priority, project, null, request.startDate, request.dueDate);
+        issue.setAssignees(findAssignees(request, workspace.getId()));
         return new ApiModels.IssueResponse(issues.save(issue));
     }
 
@@ -143,7 +145,7 @@ public class TrackingController {
         IssueEntity issue = issues.findByIdAndProject_Id(issueId, projectId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
         issue.update(request.summary.trim(), normalizeDescription(request.description), request.type,
-                request.status, request.priority, findAssignee(request.assigneeId, workspace.getId()),
+                request.status, request.priority, findAssignees(request, workspace.getId()),
                 request.startDate, request.dueDate);
         return new ApiModels.IssueResponse(issues.save(issue));
     }
@@ -165,10 +167,21 @@ public class TrackingController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found."));
     }
 
-    private MemberEntity findAssignee(Long id, Long workspaceId) {
-        if (id == null) return null;
-        return members.findByIdAndWorkspace_Id(id, workspaceId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Assignee not found."));
+    private List<MemberEntity> findAssignees(ApiModels.IssueRequest request, Long workspaceId) {
+        List<Long> ids = request.assigneeIds == null
+                ? (request.assigneeId == null ? Collections.emptyList() : Collections.singletonList(request.assigneeId))
+                : request.assigneeIds;
+        LinkedHashSet<Long> uniqueIds = new LinkedHashSet<>(ids);
+        if (uniqueIds.contains(null)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Assignee IDs must not contain null.");
+        }
+        List<MemberEntity> assignees = uniqueIds.isEmpty()
+                ? Collections.emptyList()
+                : members.findAllByIdInAndWorkspace_Id(uniqueIds, workspaceId);
+        if (assignees.size() != uniqueIds.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more assignees were not found in this workspace.");
+        }
+        return assignees;
     }
 
     private void validateIssueValues(ApiModels.IssueRequest request) {

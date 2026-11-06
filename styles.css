@@ -204,6 +204,8 @@ h1 { margin: 0; color: #262a37; font: 700 23px "Manrope", sans-serif; letter-spa
 .card-assignee.member-color-3 { background: #c38d42; }
 .card-assignee.member-color-4 { background: #54aa91; }
 .card-assignee.member-color-5 { background: #82708e; }
+.card-assignees { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; }
+.card-assignee-count { min-width: 23px; display: inline-grid; place-items: center; color: #707788; font-size: 9px; font-weight: 600; }
 .assignee-empty { color: #8b91a0; background: #eceef2; font-size: 13px; }
 .add-card-button { width: 100%; display: flex; align-items: center; gap: 7px; padding: 7px 7px 4px; border: 0; border-radius: 5px; background: transparent; color: #9096a4; text-align: left; font-size: 17px; }
 .add-card-button span { font-size: 11px; }
@@ -315,6 +317,7 @@ h1 { margin: 0; color: #262a37; font: 700 23px "Manrope", sans-serif; letter-spa
 .timeline-view .unscheduled-section .view-panel-heading { margin-top: 3px; }
 
 .issue-dialog { width: min(500px, calc(100vw - 32px)); max-width: none; padding: 0; border: 1px solid #e5e7ee; border-radius: 12px; color: #303544; box-shadow: 0 20px 70px #171a2930; }
+#issue-dialog { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
 .issue-dialog::backdrop { background: #171a294d; backdrop-filter: blur(2px); }
 .issue-dialog form { padding: 23px 25px 20px; }
 .share-project-dialog { width: min(540px, calc(100vw - 32px)); }
@@ -332,9 +335,24 @@ h1 { margin: 0; color: #262a37; font: 700 23px "Manrope", sans-serif; letter-spa
 .form-control { width: 100%; min-height: 35px; padding: 8px 10px; border: 1px solid #dfe2e9; border-radius: 6px; outline: 0; background: #fff; color: #343a49; font-size: 12px; }
 .form-control:focus { border-color: #8b7ee0; box-shadow: 0 0 0 3px #8b7ee01c; }
 .form-control::placeholder { color: #a0a5b0; }
+.assignee-help { display: block; margin-top: 5px; color: #858b99; font-size: 10px; }
+#issue-assignee { min-height: 82px; padding: 3px; }
 .description-control { resize: vertical; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
 .dialog-footer { display: flex; align-items: center; gap: 8px; margin-top: 23px; padding-top: 16px; border-top: 1px solid #eceef2; }
+.issue-comments { margin-top: 22px; padding-top: 17px; border-top: 1px solid #eceef2; }
+.issue-comments[hidden] { display: none; }
+.issue-comments h3 { margin: 0; color: #333949; font: 700 14px "Manrope", sans-serif; }
+.issue-comments-message { min-height: 15px; margin: 7px 0; color: #788091; font-size: 11px; }
+.issue-comments-message.error { color: #bd4d50; }
+.issue-comment-threads { display: grid; gap: 12px; }
+.issue-comment-thread h4 { margin: 0 0 7px; color: #52596a; font-size: 11px; }
+.issue-comment-item { margin-bottom: 7px; padding: 9px 10px; border: 1px solid #eceef2; border-radius: 6px; background: #fafaff; }
+.issue-comment-meta { display: flex; justify-content: space-between; gap: 10px; color: #858b99; font-size: 10px; }
+.issue-comment-body { margin: 6px 0 0; color: #42495a; font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.issue-comment-compose { margin-top: 12px; }
+.issue-comment-submit { margin-top: 7px; }
+.issue-comment-submit:disabled { cursor: wait; opacity: .65; }
 .footer-spacer { flex: 1; }
 .button-danger { border-color: transparent; background: transparent; color: #ca5659; }
 .button-danger:hover { background: #fff0f0; }

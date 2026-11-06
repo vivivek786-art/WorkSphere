@@ -1,6 +1,7 @@
 package com.tracking.api;
 
 import com.tracking.model.IssueEntity;
+import com.tracking.model.IssueCommentEntity;
 import com.tracking.model.MemberEntity;
 import com.tracking.model.ProjectEntity;
 import com.tracking.model.AccountEntity;
@@ -13,6 +14,7 @@ import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public final class ApiModels {
     private ApiModels() {
@@ -61,6 +63,7 @@ public final class ApiModels {
         @NotBlank
         public String priority;
         public Long assigneeId;
+        public List<Long> assigneeIds;
         public LocalDateTime startDate;
         public LocalDateTime dueDate;
 
@@ -68,6 +71,14 @@ public final class ApiModels {
         public boolean isDateRangeValid() {
             return startDate == null || dueDate == null || !startDate.isAfter(dueDate);
         }
+    }
+
+    public static class IssueCommentRequest {
+        @NotBlank
+        public String thread;
+        @NotBlank
+        @Size(max = 4000)
+        public String body;
     }
 
     public static class ProjectResponse {
@@ -145,6 +156,7 @@ public final class ApiModels {
         public final String status;
         public final String priority;
         public final Long assigneeId;
+        public final List<Long> assigneeIds;
         public final LocalDateTime startDate;
         public final LocalDateTime dueDate;
 
@@ -156,9 +168,32 @@ public final class ApiModels {
             this.type = issue.getType();
             this.status = issue.getStatus();
             this.priority = issue.getPriority();
-            this.assigneeId = issue.getAssignee() == null ? null : issue.getAssignee().getId();
+            this.assigneeIds = issue.getAssignees().stream().map(MemberEntity::getId).collect(Collectors.toList());
+            if (this.assigneeIds.isEmpty() && issue.getAssignee() != null) {
+                this.assigneeIds.add(issue.getAssignee().getId());
+            }
+            this.assigneeId = this.assigneeIds.isEmpty()
+                    ? (issue.getAssignee() == null ? null : issue.getAssignee().getId())
+                    : this.assigneeIds.get(0);
             this.startDate = issue.getStartDate();
             this.dueDate = issue.getDueDate();
+        }
+
+    }
+
+    public static class IssueCommentResponse {
+        public final Long id;
+        public final String thread;
+        public final String body;
+        public final String authorName;
+        public final LocalDateTime createdAt;
+
+        public IssueCommentResponse(IssueCommentEntity comment) {
+            this.id = comment.getId();
+            this.thread = comment.getThread();
+            this.body = comment.getBody();
+            this.authorName = comment.getAuthorName();
+            this.createdAt = comment.getCreatedAt();
         }
     }
 }

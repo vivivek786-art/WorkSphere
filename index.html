@@ -135,6 +135,12 @@
                   <option value="all">All priorities</option>
                 </select>
               </div>
+              <div class="filter-wrap">
+                <span class="filter-icon" aria-hidden="true">♙</span>
+                <select id="assignee-filter" aria-label="Filter by assignee">
+                  <option value="all">All assignees</option>
+                </select>
+              </div>
               <button class="icon-button filter-button" id="clear-filters" type="button" title="Clear filters" aria-label="Clear filters">↺</button>
             </div>
             <div class="board-view-actions">
@@ -191,8 +197,9 @@
             <select class="form-control" id="issue-priority" name="priority" required></select>
           </div>
           <div>
-            <label class="field-label" for="issue-assignee">Assignee</label>
-            <select class="form-control" id="issue-assignee" name="assignee"></select>
+            <label class="field-label" for="issue-assignee">Assignees</label>
+            <select class="form-control" id="issue-assignee" name="assignees" multiple size="4" aria-describedby="assignee-help"></select>
+            <small class="assignee-help" id="assignee-help">Select multiple people with Ctrl-click (Windows) or Command-click (Mac). Leave blank for no assignee.</small>
           </div>
         </div>
         <div class="form-row">
@@ -205,6 +212,21 @@
             <input class="form-control" id="issue-due-date" name="dueDate" type="datetime-local" />
           </div>
         </div>
+        <section class="issue-comments" id="issue-comments" aria-labelledby="issue-comments-title" hidden>
+          <h3 id="issue-comments-title">Comments</h3>
+          <p class="issue-comments-message" id="issue-comments-message" role="status" aria-live="polite"></p>
+          <div class="issue-comment-threads" id="issue-comments-list"></div>
+          <div class="issue-comment-compose">
+            <label class="field-label" for="developer-comment-input">Developer comment</label>
+            <textarea class="form-control description-control" id="developer-comment-input" maxlength="4000" rows="2" placeholder="Add a developer comment..."></textarea>
+            <button class="button button-secondary issue-comment-submit" type="button" data-comment-thread="DEVELOPER">Add developer comment</button>
+          </div>
+          <div class="issue-comment-compose">
+            <label class="field-label" for="tester-comment-input">Tester comment</label>
+            <textarea class="form-control description-control" id="tester-comment-input" maxlength="4000" rows="2" placeholder="Add a tester comment..."></textarea>
+            <button class="button button-secondary issue-comment-submit" type="button" data-comment-thread="TESTER">Add tester comment</button>
+          </div>
+        </section>
         <div class="dialog-footer">
           <button class="button button-danger" id="delete-issue" type="button" hidden>Delete issue</button>
           <div class="footer-spacer"></div>
